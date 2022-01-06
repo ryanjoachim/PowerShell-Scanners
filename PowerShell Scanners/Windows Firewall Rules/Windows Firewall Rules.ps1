@@ -5,15 +5,29 @@ param(
     $Enabled
 )
 
-process{
+process {
     
-    if([version](Get-CimInstance win32_operatingsystem).Version -lt 6.3.0){
+    if ([version](Get-CimInstance Win32_OperatingSystem).Version -lt 6.3.0) {
         throw "This scanner is only available on Server 2012/Windows 8 or higher"
     }
     
-    switch($Enabled){
-        $true { Get-NetFirewallRule -Enabled True| Select-Object Name,DisplayName,Description,Profile,Direction,Action }
-        $false { Get-NetFirewallRule | Select-Object Name,DisplayName,Description,Enabled,Profile,Direction,Action }
+    $Properties = @(
+        "Name"
+        "DisplayName"
+        "Description"
+        "Profile"
+        "Direction"
+        "Action"
+    )
+
+    switch ($Enabled) {
+        $true {
+            Get-NetFirewallRule -Enabled True | Select-Object $Properties
+        }
+        $false {
+            $Properties += @{Name = "Enabled"; Expression = { [System.Convert]::ToBoolean([String]$_.Enabled) } }
+            Get-NetFirewallRule | Select-Object $Properties
+        }
     }
 
 }

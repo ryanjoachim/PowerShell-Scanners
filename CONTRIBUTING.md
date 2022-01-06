@@ -1,12 +1,12 @@
 # Contributing
 Thank you for your interest in contributing to this project! 
 
-Please abide by the [Code of Conduct](Code%20of%20Conduct.md) for all interactions with this repository.
+Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) for all interactions with this repository.
 
 ## Pull Requests
 Pull requests are the mechanism you can use to submit your PowerShell Scanners to this repository. GitHub itself has some [great documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature. We use the "fork and pull" model [described here](https://help.github.com/articles/about-collaborative-development-models/), where contributors push changes to their personal fork and create pull requests to bring those changes into the source repository.
 
-Please follow the [Style Guide](Style%20Guide.md) when crafting your pull request.
+Please follow the [Style Guide](STYLE_GUIDE.md) when crafting your pull request.
 
 All pull requests are reviewed by a PDQ.com employee. We'll try to get to your pull request as soon as we can, but please be patient.
 
@@ -19,6 +19,13 @@ Each scanner gets its own folder. Give your folder a descriptive name. These are
   * Replace "Script" with the same name you used for your folder.
 * README.md
   * Put in as much detail as you think is necessary. Look at the other scanners for ideas.
+
+You can use `New-Scanner.ps1` in the `PowerShell Scanners` folder to create these files for you.
+
+```PowerShell
+Set-Location 'C:\PowerShell-Scanners\PowerShell Scanners'
+.\New-Scanner.ps1 -Name 'Your desired name'
+```
 
 ## Bug Reports
 If you discover a bug, please [search existing issues](https://github.com/pdq/PowerShell-Scanners/search?type=Issues) to see if it has already been reported.

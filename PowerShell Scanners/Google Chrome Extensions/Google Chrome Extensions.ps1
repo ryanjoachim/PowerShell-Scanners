@@ -4,20 +4,6 @@ param (
     [Switch]$EnablePermissions
 )
 
-function Convert-UtcToLocal {
-    param(
-        [parameter(Mandatory = $true)]
-        [String]$UtcTime
-    )
-
-    $CurrentTimeZone = (Get-CimInstance Win32_TimeZone 4>null).StandardName
-    $TZ = [System.TimeZoneInfo]::FindSystemTimeZoneById($CurrentTimeZone)
-    
-    [System.TimeZoneInfo]::ConvertTimeFromUtc($UtcTime, $TZ)
-}
-
-
-
 Foreach ( $User in (Get-ChildItem -Directory -Path "$env:SystemDrive\Users") ) {
 
     # Get profile folder
@@ -48,14 +34,18 @@ Foreach ( $User in (Get-ChildItem -Directory -Path "$env:SystemDrive\Users") ) {
     }
 
     # Read Preferences JSON file
-    $PreferencesJson = Get-Content $PreferencesFile | ConvertFrom-Json
+    # This .NET method is necessary because ConvertFrom-Json can't handle duplicate entries with different cases.
+    # https://github.com/pdq/PowerShell-Scanners/issues/23
+    Add-Type -AssemblyName System.Web.Extensions
+    $PreferencesText = Get-Content $PreferencesFile
+    $JsonParser = New-Object -TypeName System.Web.Script.Serialization.JavaScriptSerializer
+    $PreferencesJson = $JsonParser.DeserializeObject($PreferencesText)
 
-    # https://andrewpla.dev/Iterate-Over-Object-Properties/
-    Foreach ( $Extension in (($PreferencesJson.Extensions.Settings).PSObject.Members | Where-Object MemberType -eq 'NoteProperty') ) {
+    Foreach ( $Extension in $PreferencesJson.extensions.settings.GetEnumerator() ) {
 
-        $ID = $Extension.Name
+        $ID = $Extension.Key
         $Extension = $Extension.Value
-        $Name = $Extension.Manifest.Name
+        $Name = $Extension.manifest.name
 
         # Ignore blank names
         if ( -Not $Name ) {
@@ -64,37 +54,37 @@ Foreach ( $User in (Get-ChildItem -Directory -Path "$env:SystemDrive\Users") ) {
             Continue
 
         }
-            
+
         # Convert Install_Time
-        $InstallTime = [Double]$Extension.Install_Time
+        $InstallTime = [Double]$Extension.install_time
         # Divide by 1,000,000 because we are going to add seconds on to the base date
         $InstallTime = ($InstallTime - 11644473600000000) / 1000000
         $UtcTime = Get-Date -Date "1970-01-01 00:00:00"
         $UtcTime = $UtcTime.AddSeconds($InstallTime)
-        $LocalTime = Convert-UtcToLocal($UtcTime)
-    
-        $Output = [PSCustomObject]@{
+        $LocalTime = [System.TimeZoneInfo]::ConvertTimeFromUtc($UtcTime, (Get-TimeZone))
+
+        $Output = [Ordered]@{
             Name           = [String]  $Name
-            Version        = [String]  $Extension.Manifest.Version
-            Enabled        = [Bool]    $Extension.State
-            Description    = [String]  $Extension.Manifest.Description
-            DefaultInstall = [Bool]    $Extension.Was_Installed_By_Default
-            OemInstall     = [Bool]    $Extension.Was_Installed_By_OEM
+            Version        = [String]  $Extension.manifest.version
+            Enabled        = [Bool]    $Extension.state
+            Description    = [String]  $Extension.manifest.description
+            DefaultInstall = [Bool]    $Extension.was_installed_by_default
+            OemInstall     = [Bool]    $Extension.was_installed_by_oem
             ID             = [String]  $ID
             InstallDate    = [DateTime]$LocalTime
             User           = [String]  $User
-            ChromeVer      = [String]  $PreferencesJson.Extensions.Last_Chrome_Version
+            ChromeVer      = [String]  $PreferencesJson.extensions.last_chrome_version
         }
 
         if ( $EnablePermissions ) {
 
             # Convert Permissions array into a multi-line string
             # This multi-line string is kind of ugly in Inventory, so it's disabled by default
-            $Output.Permissions = [String]($Extension.Manifest.Permissions -Join "`n")
+            $Output.Permissions = [String]($Extension.manifest.permissions -Join "`n")
 
         }
 
-        $Output
+        [PSCustomObject]$Output
     
     }
 
